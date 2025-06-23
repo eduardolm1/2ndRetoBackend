@@ -5,7 +5,7 @@ RUN mkdir -p /root/src
 # Establece el directorio de trabajo en /root/src
 WORKDIR /root/src
 # Copia los archivos de configuración
-COPY ["package.json", "package-lock.json", "./"]
+COPY ["package.json", "./"]
 # Instala las dependencias del proyecto
 RUN npm install
 # Copia los archivos de tu proyecto al directorio de trabajo
