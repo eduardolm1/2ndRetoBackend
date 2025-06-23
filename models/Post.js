@@ -8,10 +8,14 @@ const PostSchema = new mongoose.Schema(
         content: String,
         comments: [{ type: ObjectId, ref: 'Comment' }],
         likes: [{ type: ObjectId }],
+        userId: {
+            type: ObjectId,
+            ref: 'User',
+        },
     }, { timestamps: true }
 );
 
-PostSchema.pre('findOneAndDelete', async function(next) {
+PostSchema.pre('findOneAndDelete', async function (next) {
     const doc = await this.model.findOne(this.getFilter());
     if (doc) {
         await Comment.deleteMany({ _id: { $in: doc.comments } });

@@ -56,13 +56,12 @@ const PostController = {
 
     async getAll(req, res) {
         try {
-            const { page = 1, limit = 5 } = req.query
+            const { page = 1, limit = 10 } = req.query
             const post = await Post.find()
                 .populate({
                     path: 'comments',
                     populate: { path: 'userId', select: 'name email' }
                 })
-                .populate('userId', 'name email')
                 .limit(limit)
                 .skip((page - 1) * limit)
             res.status(200).send(post)

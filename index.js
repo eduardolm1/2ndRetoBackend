@@ -1,8 +1,10 @@
 const express = require('express');
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const { dbConnection } = require('./config/config');
 const { typeError } = require('./middlewares/errors')
+require('dotenv').config()
+
 
 
 app.use(express.json());
