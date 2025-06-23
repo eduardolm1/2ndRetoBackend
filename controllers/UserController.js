@@ -1,7 +1,8 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const { jwt_secret } = require('../config/keys.js');
+require('dotenv').config()
+
 
 const UserController = {
     //Register
@@ -42,7 +43,7 @@ const UserController = {
                 return res.status(400).send({ message: 'Credenciales incorrectas' });
             }
 
-            const token = jwt.sign({ _id: user._id }, jwt_secret, { expiresIn: '1h' });
+            const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
             if (user.tokens.length > 3) user.tokens.shift();
             user.tokens.push(token);
             await user.save();
