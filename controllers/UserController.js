@@ -60,11 +60,23 @@ const UserController = {
     //Get info
     async getInfo(req, res) {
         try {
-            const user = await User.findById(req.user._id).populate('posts');
-            res.status(200).send(user);
+            const user = await User.findById(req.user._id)
+                .populate({
+                    path: 'posts',
+                })
+                .populate({
+                    path: 'followers',
+                    select: 'name email'
+                })
+                .populate({
+                    path: 'following',
+                    select: 'name email'
+                })
+
+            res.status(200).send(userData);
         } catch (error) {
             console.error(error);
-            res.status(500).send({ message: 'Error al obtener información' });
+            res.status(500).send({ message: 'Error al obtener información', error });
         }
     },
     //Logout
