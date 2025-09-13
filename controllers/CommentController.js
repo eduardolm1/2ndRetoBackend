@@ -6,18 +6,25 @@ const CommentController = {
     async create(req, res) {
         try {
             const { content } = req.body;
-            if (!content) return res.status(400).send({ message: 'El contenido del comentario es requerido' });
+            if (!content) {
+                return res.status(400).send({ message: 'El contenido del comentario es requerido' });
+            }
+
             const post = await Post.findById(req.params.postId);
+            if (!post) {
+                return res.status(404).send({ message: 'Post no encontrado' });
+            }
 
-            if (!post) return res.status(404).send({ message: 'Post no encontrado' });
-
-            const comment = await Comment.create({
+            let comment = await Comment.create({
                 text: content,
                 userId: req.user._id,
                 postId: post._id
             });
+
             post.comments.push(comment._id);
             await post.save();
+
+            comment = await Comment.findById(comment._id).populate("userId", "name");
 
             res.status(201).send({ message: 'Comentario añadido correctamente', comment });
         } catch (error) {
@@ -34,7 +41,7 @@ const CommentController = {
             res.send(comments);
         } catch (error) {
             console.error(error);
-            res.status(500).send({message: 'Error al obtener comentarios', error});
+            res.status(500).send({ message: 'Error al obtener comentarios', error });
         }
     },
 
@@ -51,10 +58,10 @@ const CommentController = {
                 { new: true }
             );
             if (!comment) return res.status(404).send({ message: 'Comentario no encontrado o no autorizado' });
-            res.send({message: 'Comentario actualizado',comment});
+            res.send({ message: 'Comentario actualizado', comment });
         } catch (error) {
             console.error(error);
-            res.status(500).send({message: 'Error al actualizar comentario', error});
+            res.status(500).send({ message: 'Error al actualizar comentario', error });
         }
     },
 
@@ -91,20 +98,20 @@ const CommentController = {
                 req.params.id,
                 { $addToSet: { likes: req.user._id } },
                 { new: true }
-            );
+            ).populate("userId", "name");
 
             if (!comment) {
-                return res.status(404).send({ message: 'Comentario no encontrado' });
+                return res.status(404).send({ message: "Comentario no encontrado" });
             }
 
             res.send({
-                message: 'Like añadido al comentario',
-                likes: comment.likes
+                message: "Like añadido al comentario",
+                comment
             });
         } catch (error) {
             console.error(error);
             res.status(500).send({
-                message: 'Error al dar like',
+                message: "Error al dar like",
                 error
             });
         }
@@ -117,20 +124,20 @@ const CommentController = {
                 req.params.id,
                 { $pull: { likes: req.user._id } },
                 { new: true }
-            );
+            ).populate("userId", "name");
 
             if (!comment) {
-                return res.status(404).send({ message: 'Comentario no encontrado' });
+                return res.status(404).send({ message: "Comentario no encontrado" });
             }
 
             res.send({
-                message: 'Like eliminado del comentario',
-                likes: comment.likes
+                message: "Like eliminado del comentario",
+                comment
             });
         } catch (error) {
             console.error(error);
             res.status(500).send({
-                message: 'Error al quitar like',
+                message: "Error al quitar like",
                 error
             });
         }

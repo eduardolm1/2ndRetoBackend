@@ -7,13 +7,19 @@ const PostController = {
     async create(req, res) {
         try {
             const { name, content } = req.body;
+
             if (!name || !content) {
                 return res.status(400).send({ message: 'Nombre y contenido son requeridos' });
             }
-            const post = await Post.create({
+
+            let post = await Post.create({
                 ...req.body,
-                userId: req.user._id
+                userId: req.user,
+                images: ["http://localhost:5173/img/image-city.png"]
             });
+
+            post = await Post.findById(post._id).populate('userId');
+
             res.status(201).send({ message: 'Post creado correctamente', post });
         } catch (error) {
             console.error(error);
@@ -53,22 +59,21 @@ const PostController = {
     },
 
     //traer posts junto a users y comentarios de dichos post y paginacion de 10 en 10
-
     async getAll(req, res) {
         try {
-            const { page = 1, limit = 10 } = req.query
+            const { page = 1, limit = 10 } = req.query;
             const post = await Post.find()
+                .populate('userId', 'name email followers')
                 .populate({
                     path: 'comments',
                     populate: { path: 'userId', select: 'name email' }
                 })
                 .limit(limit)
-                .skip((page - 1) * limit)
-            res.status(200).send(post)
+                .skip((page - 1) * limit);
+            res.status(200).send(post);
         } catch (error) {
-            console.error(error)
-            res.status(500).send({ message: 'Ha habido un problema al obtener los post', error })
-
+            console.error(error);
+            res.status(500).send({ message: 'Ha habido un problema al obtener los post', error });
         }
     },
 
@@ -101,33 +106,42 @@ const PostController = {
         try {
             const product = await Post.findByIdAndUpdate(
                 req.params._id,
-                { $push: { likes: req.user._id } },
+                { $addToSet: { likes: req.user._id } },
                 { new: true }
             )
+                .populate("userId", "name email followers")
+                .populate({
+                    path: "comments",
+                    populate: { path: "userId", select: "name email" }
+                });
 
-            res.send(product)
+            res.send(product);
         } catch (error) {
-            console.error(error)
-            res.status(500).send({ message: 'There was a problem with your request' })
+            console.error(error);
+            res.status(500).send({ message: "There was a problem with your request" });
         }
     },
-    //dislike
+
+    // dislike
     async dislike(req, res) {
         try {
             const post = await Post.findByIdAndUpdate(
                 req.params._id,
                 { $pull: { likes: req.user._id } },
                 { new: true }
-            );
-            res.status(200).send({ message: 'Dislike realizado', post });
+            )
+                .populate("userId", "name email followers")
+                .populate({
+                    path: "comments",
+                    populate: { path: "userId", select: "name email" }
+                });
+
+            res.status(200).send(post);
         } catch (error) {
             console.error(error);
-            res.status(500).send({ message: 'Error al hacer dislike' });
+            res.status(500).send({ message: "Error al hacer dislike" });
         }
     }
-
-
-
 }
 
 module.exports = PostController;

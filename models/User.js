@@ -23,6 +23,7 @@ const UserSchema = new mongoose.Schema(
 		},
 		tokens: [],
 		role: String,
+		posts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }],
 		followers: [{
 			type: ObjectId,
 			ref: 'User'

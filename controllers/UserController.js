@@ -43,7 +43,7 @@ const UserController = {
                 return res.status(400).send({ message: 'Credenciales incorrectas' });
             }
 
-            const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+            const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET);
             if (user.tokens.length > 3) user.tokens.shift();
             user.tokens.push(token);
             await user.save();
@@ -57,13 +57,24 @@ const UserController = {
             res.status(500).send({ message: 'Error al iniciar sesión' });
         }
     },
+    async getUsers(req, res) {
+        try {
+            const users = await User.find()
+                .select("name email age followers following createdAt")
+                .limit(50)
+                .lean();
+
+            res.status(200).send(users);
+        } catch (error) {
+            console.error(error);
+            res.status(500).send({ message: "Error al obtener usuarios", error });
+        }
+    },
     //Get info
     async getInfo(req, res) {
         try {
-            const user = await User.findById(req.user._id)
-                .populate({
-                    path: 'posts',
-                })
+            const userId = req.params.id;
+            const user = await User.findById(userId)
                 .populate({
                     path: 'followers',
                     select: 'name email'
@@ -71,7 +82,13 @@ const UserController = {
                 .populate({
                     path: 'following',
                     select: 'name email'
-                })
+                });
+
+            const Post = require('../models/Post');
+            const posts = await Post.find({ userId: userId });
+
+            const userData = user.toObject();
+            userData.posts = posts;
 
             res.status(200).send(userData);
         } catch (error) {
