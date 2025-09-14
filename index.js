@@ -9,7 +9,7 @@ require('dotenv').config()
 app.use(cors({
   origin: [
     'http://localhost:5173',
-    'https://gizarte.vercel.app/'
+    'https://gizarte.vercel.app'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -28,7 +28,7 @@ app.get('/', (req, res) => {
     message: 'API funcionando correctamente',
     status: 'OK', 
     timestamp: new Date().toISOString(),
-    frontend: 'https://second-frontend-wheat.vercel.app/'
+    frontend: 'https://gizarte.vercel.app'
   });
 });
 
