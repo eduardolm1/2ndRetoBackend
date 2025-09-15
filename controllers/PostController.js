@@ -212,22 +212,7 @@ const PostController = {
         }
     },
 
-    // Nuevo endpoint para servir archivos multimedia
-    async getMedia(req, res) {
-        try {
-            const filename = req.params.filename;
-            const filePath = path.join(__dirname, '..', 'uploads', filename);
-
-            if (!fs.existsSync(filePath)) {
-                return res.status(404).send({ message: 'Archivo no encontrado' });
-            }
-
-            res.sendFile(filePath);
-        } catch (error) {
-            console.error(error);
-            res.status(500).send({ message: 'Error al obtener el archivo', error });
-        }
-    }
+  
 }
 
 module.exports = PostController;
