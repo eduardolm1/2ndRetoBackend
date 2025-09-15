@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const { dbConnection } = require('./config/config');
@@ -16,7 +17,12 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));
 
-app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
 app.use('/users', require('./routes/user'))
 app.use('/posts', require('./routes/post'))
 app.use('/comments', require('./routes/comment'))
@@ -33,6 +39,13 @@ app.get('/', (req, res) => {
 });
 
 dbConnection()
+
+const fs = require('fs');
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log('Directorio uploads creado');
+}
 
 module.exports = app;
 

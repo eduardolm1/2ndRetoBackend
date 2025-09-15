@@ -2,8 +2,6 @@ const Post = require('../models/Post');
 
 const PostController = {
 
-    //create (validacion de rellenado de todos los campos excepto imagen )
-
     async create(req, res) {
         try {
             const { name, content } = req.body;
@@ -12,13 +10,27 @@ const PostController = {
                 return res.status(400).send({ message: 'Nombre y contenido son requeridos' });
             }
 
+            let images = [];
+            if (req.files && req.files.length > 0) {
+                req.files.forEach(file => {
+                    if (file.mimetype.startsWith('image/')) {
+                        images.push(file.path);
+                    }
+                });
+            }
             let post = await Post.create({
-                ...req.body,
-                userId: req.user,
-                images: ["http://localhost:5173/img/image-city.png"]
+                name,
+                content,
+                images,
+                userId: req.user._id
             });
 
-            post = await Post.findById(post._id).populate('userId');
+            post = await Post.findById(post._id)
+                .populate('userId', 'name email followers')
+                .populate({
+                    path: 'comments',
+                    populate: { path: 'userId', select: 'name email' }
+                });
 
             res.status(201).send({ message: 'Post creado correctamente', post });
         } catch (error) {
@@ -27,7 +39,6 @@ const PostController = {
         }
     },
 
-    //updateV
     async update(req, res) {
         try {
             const post = await Post.findById(req.params.id);
@@ -37,74 +48,133 @@ const PostController = {
                 return res.status(403).send({ message: 'No autorizado' });
             }
 
-            const updatedPost = await Post.findByIdAndUpdate(req.params.id, req.body, {
+            let updateData = { ...req.body };
+
+            // Procesar nuevos archivos si se suben
+            if (req.files && req.files.length > 0) {
+                const images = [];
+                req.files.forEach(file => {
+                    if (file.mimetype.startsWith('image/')) {
+                        images.push(file.path);
+                    }
+                });
+                if (images.length > 0) {
+                    updateData.images = images;
+                }
+            }
+
+            const updatedPost = await Post.findByIdAndUpdate(req.params.id, updateData, {
                 new: true
+            })
+            .populate('userId', 'name email followers')
+            .populate({
+                path: 'comments',
+                populate: { path: 'userId', select: 'name email' }
             });
+
             res.status(200).send({ message: 'Post actualizado', post: updatedPost });
         } catch (error) {
             console.error(error);
-            res.status(500).send({ message: 'Error al actualizar' });
+            res.status(500).send({ message: 'Error al actualizar', error });
         }
     },
-    //delete(autentificacion )V
 
     async delete(req, res) {
         try {
-            const post = await Post.findByIdAndDelete(req.params.id)
-            res.status(204).send({ message: 'Post borrado correctamente' })
+            const post = await Post.findById(req.params.id);
+            if (!post) {
+                return res.status(404).send({ message: 'Post no encontrado' });
+            }
+            if (post.userId.toString() !== req.user._id.toString()) {
+                return res.status(403).send({ message: 'No autorizado. Solo el propietario puede eliminar este post' });
+            }
+
+            // NOTA: Con Cloudinary, los archivos se mantienen en la nube
+            // Puedes implementar lógica para borrarlos de Cloudinary si lo deseas
+
+            await Post.findByIdAndDelete(req.params.id);
+
+            res.status(200).send({
+                message: 'Post borrado correctamente',
+                id: req.params.id
+            });
         } catch (error) {
-            console.error(error)
-            res.status(500).send({ message: 'Ha habido un problema al borrarlo' })
+            console.error(error);
+            res.status(500).send({ message: 'Ha habido un problema al borrar el post', error });
         }
     },
 
-    //traer posts junto a users y comentarios de dichos post y paginacion de 10 en 10
+    // Los demás métodos (getAll, getPostByName, getPostById, like, dislike) se mantienen igual
     async getAll(req, res) {
         try {
             const { page = 1, limit = 10 } = req.query;
-            const post = await Post.find()
+            const posts = await Post.find()
                 .populate('userId', 'name email followers')
                 .populate({
                     path: 'comments',
                     populate: { path: 'userId', select: 'name email' }
                 })
-                .limit(limit)
-                .skip((page - 1) * limit);
-            res.status(200).send(post);
+                .limit(limit * 1)
+                .skip((page - 1) * limit)
+                .sort({ createdAt: -1 });
+
+            const total = await Post.countDocuments();
+
+            res.status(200).send({
+                posts,
+                totalPages: Math.ceil(total / limit),
+                currentPage: page,
+                total
+            });
         } catch (error) {
             console.error(error);
             res.status(500).send({ message: 'Ha habido un problema al obtener los post', error });
         }
     },
 
-    //buscar por nombre post
     async getPostByName(req, res) {
         try {
-            const post = await Post.find({
+            const posts = await Post.find({
                 $text: {
                     $search: req.params.name
                 }
             })
-            res.send(post)
+                .populate('userId', 'name email followers')
+                .populate({
+                    path: 'comments',
+                    populate: { path: 'userId', select: 'name email' }
+                });
+
+            res.send(posts);
         } catch (error) {
-            console.error(error)
+            console.error(error);
+            res.status(500).send({ message: 'Error al buscar posts', error });
         }
     },
 
-    //buscar por id posts
     async getPostById(req, res) {
         try {
-            const productId = await Post.findById(req.params._id)
-            res.status(200).send(productId)
+            const post = await Post.findById(req.params._id)
+                .populate('userId', 'name email followers')
+                .populate({
+                    path: 'comments',
+                    populate: { path: 'userId', select: 'name email' }
+                });
+
+            if (!post) {
+                return res.status(404).send({ message: 'Post no encontrado' });
+            }
+
+            res.status(200).send(post);
         } catch (error) {
-            console.error(error)
-            res.status(500).send({ message: 'Producto no encontrado por el id' })
+            console.error(error);
+            res.status(500).send({ message: 'Error al obtener el post', error });
         }
     },
-    //like
+
     async like(req, res) {
         try {
-            const product = await Post.findByIdAndUpdate(
+            const post = await Post.findByIdAndUpdate(
                 req.params._id,
                 { $addToSet: { likes: req.user._id } },
                 { new: true }
@@ -115,14 +185,13 @@ const PostController = {
                     populate: { path: "userId", select: "name email" }
                 });
 
-            res.send(product);
+            res.send(post);
         } catch (error) {
             console.error(error);
             res.status(500).send({ message: "There was a problem with your request" });
         }
     },
 
-    // dislike
     async dislike(req, res) {
         try {
             const post = await Post.findByIdAndUpdate(
@@ -140,6 +209,23 @@ const PostController = {
         } catch (error) {
             console.error(error);
             res.status(500).send({ message: "Error al hacer dislike" });
+        }
+    },
+
+    // Nuevo endpoint para servir archivos multimedia
+    async getMedia(req, res) {
+        try {
+            const filename = req.params.filename;
+            const filePath = path.join(__dirname, '..', 'uploads', filename);
+
+            if (!fs.existsSync(filePath)) {
+                return res.status(404).send({ message: 'Archivo no encontrado' });
+            }
+
+            res.sendFile(filePath);
+        } catch (error) {
+            console.error(error);
+            res.status(500).send({ message: 'Error al obtener el archivo', error });
         }
     }
 }

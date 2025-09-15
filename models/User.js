@@ -21,8 +21,9 @@ const UserSchema = new mongoose.Schema(
 			type: Number,
 			required: [true, 'Por favor rellena tu edad'],
 		},
-		tokens: [],
-		role: String,
+		profileImage: { type: String, default: '' },
+		role: { type: String, default: 'user' },
+		tokens: [String],
 		posts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }],
 		followers: [{
 			type: ObjectId,
@@ -31,7 +32,18 @@ const UserSchema = new mongoose.Schema(
 		following: [{
 			type: ObjectId,
 			ref: 'User'
-		}]
+		}],
+		config: {
+			background: { type: String, default: '' }, // color o url
+			textColor: { type: String, default: '' },
+			fontFamily: { type: String, default: '' },
+			button: {
+				background: { type: String, default: '' },
+				textColor: { type: String, default: '' },
+				fontFamily: { type: String, default: '' },
+				borderRadius: { type: String, default: '' }, // px o %
+			}
+		}
 	},
 	{ timestamps: true }
 )

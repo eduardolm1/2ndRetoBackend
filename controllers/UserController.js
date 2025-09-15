@@ -1,3 +1,24 @@
+const cloudinary = require('cloudinary').v2;
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+exports.updateProfileImage = async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+        const result = await cloudinary.uploader.upload(req.file.path, { folder: 'profile_images' });
+        const user = await User.findByIdAndUpdate(
+            req.user._id,
+            { profileImage: result.secure_url },
+            { new: true }
+        );
+        res.json({ message: 'Imagen actualizada', profileImage: user.profileImage });
+    } catch (error) {
+        res.status(500).json({ message: 'Error al actualizar imagen', error });
+    }
+};
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
@@ -44,9 +65,12 @@ const UserController = {
             }
 
             const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET);
-            if (user.tokens.length > 3) user.tokens.shift();
-            user.tokens.push(token);
-            await user.save();
+            
+            let tokens = user.tokens || [];
+            if (tokens.length > 3) tokens = tokens.slice(1);
+            tokens.push(token);
+            await User.updateOne({ _id: user._id }, { tokens });
+
             res.status(200).send({
                 message: 'Bienvenid@ ' + user.name,
                 token,
@@ -106,6 +130,32 @@ const UserController = {
         } catch (error) {
             console.error(error);
             res.status(500).send({ error, message: 'Error al cerrar sesión' });
+        }
+    },
+    //Update 
+    async update(req, res) {
+        try {
+            // Permite actualizar solo tu propio usuario
+            const user = await User.findById(req.user._id);
+            if (!user) return res.status(404).send({ message: 'Usuario no encontrado' });
+
+            // Recoge los datos del body
+            const { password, ...updateData } = req.body;
+
+            // Si viene archivo, súbelo a Cloudinary
+            if (req.file) {
+                const result = await cloudinary.uploader.upload(req.file.path, { folder: 'profile_images' });
+                updateData.profileImage = result.secure_url;
+            }
+
+            const updatedUser = await User.findByIdAndUpdate(req.user._id, updateData, {
+                new: true
+            }).select("-password -tokens");
+
+            res.status(200).send({ message: 'Usuario actualizado', user: updatedUser });
+        } catch (error) {
+            console.error(error);
+            res.status(500).send({ message: 'Error al actualizar', error });
         }
     }
 };
