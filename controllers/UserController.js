@@ -84,7 +84,7 @@ const UserController = {
     async getUsers(req, res) {
         try {
             const users = await User.find()
-                .select("name email age followers following createdAt")
+                .select("name email age followers following createdAt profileImage")
                 .limit(50)
                 .lean();
 
@@ -135,14 +135,11 @@ const UserController = {
     //Update 
     async update(req, res) {
         try {
-            // Permite actualizar solo tu propio usuario
             const user = await User.findById(req.user._id);
             if (!user) return res.status(404).send({ message: 'Usuario no encontrado' });
 
-            // Recoge los datos del body
             const { password, ...updateData } = req.body;
 
-            // Si viene archivo, súbelo a Cloudinary
             if (req.file) {
                 const result = await cloudinary.uploader.upload(req.file.path, { folder: 'profile_images' });
                 updateData.profileImage = result.secure_url;
